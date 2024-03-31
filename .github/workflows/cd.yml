@@ -1,0 +1,60 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ${{ matrix.operating-system }}
+    name: 🚀 Deploy https://qwik-astro.deno.dev to Node-${{ matrix.node-version }} and build with pnpm@${{ matrix.pnpm-version }} on ${{ matrix.operating-system }}
+
+    environment: 
+      name: production
+      url: https://qwik-astro.deno.dev
+
+    strategy:
+      fail-fast: true
+      matrix:
+        operating-system: [ubuntu-latest]
+        deno-version: [1.42]
+        node-version: [20.12]
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v3
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ matrix.deno-version }}
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install
+
+      - name: Build for production
+        run: pnpm build
+
+      - name: Upload to Deno Deploy
+        uses: denoland/deployctl@v1
+        with:
+          project: "qwik-astro"
+          entrypoint: "server/entry.mjs"
+          root: "dist"
+
